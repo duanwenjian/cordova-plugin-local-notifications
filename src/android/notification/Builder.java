@@ -21,22 +21,35 @@
 
 package de.appplant.cordova.plugin.notification;
 
+//import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationCompat.MessagingStyle.Message;
 import android.support.v4.media.app.NotificationCompat.MediaStyle;
 import android.support.v4.media.session.MediaSessionCompat;
+import android.util.Log;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+
 
 import de.appplant.cordova.plugin.notification.action.Action;
 
+import static android.app.PendingIntent.FLAG_CANCEL_CURRENT;
 import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
 import static de.appplant.cordova.plugin.notification.Notification.EXTRA_UPDATE;
 
@@ -63,6 +76,7 @@ public final class Builder {
 
     // Additional extras to merge into each intent
     private Bundle extras;
+
 
     /**
      * Constructor
@@ -116,36 +130,44 @@ public final class Builder {
             return new Notification(context, options);
         }
 
-        Uri sound     = options.getSound();
+
+        Uri sound = options.getSound();
         Bundle extras = new Bundle();
 
         extras.putInt(Notification.EXTRA_ID, options.getId());
         extras.putString(Options.EXTRA_SOUND, sound.toString());
-
-        builder = findOrCreateBuilder()
-                .setDefaults(options.getDefaults())
-                .setExtras(extras)
-                .setOnlyAlertOnce(false)
-                .setChannelId(options.getChannel())
-                .setContentTitle(options.getTitle())
-                .setContentText(options.getText())
-                .setTicker(options.getText())
-                .setNumber(options.getNumber())
-                .setAutoCancel(options.isAutoClear())
-                .setOngoing(options.isSticky())
-                .setColor(options.getColor())
-                .setVisibility(options.getVisibility())
-                .setPriority(options.getPrio())
-                .setShowWhen(options.showClock())
-                .setUsesChronometer(options.showChronometer())
-                .setGroup(options.getGroup())
-                .setGroupSummary(options.getGroupSummary())
-                .setTimeoutAfter(options.getTimeout())
-                .setLights(options.getLedColor(), options.getLedOn(), options.getLedOff());
-
+            builder = findOrCreateBuilder()
+                    .setDefaults(options.getDefaults())
+                    .setExtras(extras)
+                    .setOnlyAlertOnce(false)
+                    .setChannelId(options.getChannel())
+                    .setContentTitle(options.getTitle())
+                    .setContentText(options.getText())
+                    .setTicker(options.getText())
+                    .setNumber(options.getNumber())
+                    .setAutoCancel(options.isAutoClear())
+                    .setOngoing(options.isSticky())
+                    .setColor(options.getColor())
+                    .setVisibility(options.getVisibility())
+                    .setPriority(options.getPrio())
+                    .setShowWhen(options.showClock())
+                    .setUsesChronometer(options.showChronometer())
+                    .setGroup(options.getGroup())
+                    .setGroupSummary(options.getGroupSummary())
+                    .setTimeoutAfter(options.getTimeout())
+                    .setLights(options.getLedColor(), options.getLedOn(), options.getLedOff());
+                    
         if (sound != Uri.EMPTY && !isUpdate()) {
-            builder.setSound(sound);
-        }
+            Log.e("localNotification", "sound.path=" + sound.getPath());
+            if(Build.VERSION.SDK_INT < 26){
+                builder.setSound(sound);
+            }
+            else{
+                Manager mgr = Manager.getInstance(context);
+                mgr.createDefaultChannel(sound,options.getChannel());
+            }
+        } else
+            Log.e("localNotification", "sound= null");
 
         if (options.isWithProgressBar()) {
             builder.setProgress(
@@ -176,7 +198,7 @@ public final class Builder {
      */
     private void applyStyle(NotificationCompat.Builder builder) {
         Message[] messages = options.getMessages();
-        String summary     = options.getSummary();
+        String summary = options.getSummary();
 
         if (messages != null) {
             applyMessagingStyle(builder, messages);
@@ -242,7 +264,7 @@ public final class Builder {
 
         NotificationCompat.BigPictureStyle style;
         String summary = options.getSummary();
-        String text    = options.getText();
+        String text = options.getText();
 
         style = new NotificationCompat.BigPictureStyle(builder)
                 .setSummaryText(summary == null ? text : summary)
@@ -352,7 +374,7 @@ public final class Builder {
 
         int reqCode = random.nextInt();
 
-        PendingIntent contentIntent = PendingIntent.getService(
+        PendingIntent contentIntent = PendingIntent.getActivity(
                 context, reqCode, intent, FLAG_UPDATE_CURRENT);
 
         builder.setContentIntent(contentIntent);
@@ -363,7 +385,7 @@ public final class Builder {
      *
      * @param builder Local notification builder instance.
      */
-    private void applyActions (NotificationCompat.Builder builder) {
+    private void applyActions(NotificationCompat.Builder builder) {
         Action[] actions = options.getActions();
         NotificationCompat.Action.Builder btn;
 
@@ -371,9 +393,9 @@ public final class Builder {
             return;
 
         for (Action action : actions) {
-             btn = new NotificationCompat.Action.Builder(
-                     action.getIcon(), action.getTitle(),
-                     getPendingIntentForAction(action));
+            btn = new NotificationCompat.Action.Builder(
+                    action.getIcon(), action.getTitle(),
+                    getPendingIntentForAction(action));
 
             if (action.isWithInput()) {
                 btn.addRemoteInput(action.getInput());
@@ -389,7 +411,7 @@ public final class Builder {
      *
      * @param action Notification action needing the PendingIntent
      */
-    private PendingIntent getPendingIntentForAction (Action action) {
+    private PendingIntent getPendingIntentForAction(Action action) {
         Intent intent = new Intent(context, clickActivity)
                 .putExtra(Notification.EXTRA_ID, options.getId())
                 .putExtra(Action.EXTRA_ID, action.getId())
@@ -402,8 +424,8 @@ public final class Builder {
 
         int reqCode = random.nextInt();
 
-        return PendingIntent.getService(
-                context, reqCode, intent, FLAG_UPDATE_CURRENT);
+        return PendingIntent.getActivity(
+                context, reqCode, intent, FLAG_CANCEL_CURRENT);
     }
 
     /**
@@ -423,7 +445,11 @@ public final class Builder {
         NotificationCompat.Builder builder = Notification.getCachedBuilder(key);
 
         if (builder == null) {
-            builder = new NotificationCompat.Builder(context, options.getChannel());
+//            if (Build.VERSION.SDK_INT >= 26) {
+//                builder =
+//            }else {
+                builder = new NotificationCompat.Builder(context, options.getChannel());
+//            }
         }
 
         return builder;

@@ -19,8 +19,6 @@
  * limitations under the License.
  */
 
-// codebeat:disable[TOO_MANY_FUNCTIONS]
-
 package de.appplant.cordova.plugin.notification;
 
 import android.annotation.SuppressLint;
@@ -28,8 +26,10 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.service.notification.StatusBarNotification;
 import android.support.v4.app.NotificationManagerCompat;
+import android.util.Log;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -38,7 +38,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+
 import de.appplant.cordova.plugin.badge.BadgeImpl;
+
 
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.M;
@@ -55,7 +57,8 @@ import static de.appplant.cordova.plugin.notification.Notification.Type.TRIGGERE
 public final class Manager {
 
     // TODO: temporary
-    static final String CHANNEL_ID = "default-channel-id";
+//    static final String CHANNEL_ID = "default-channel-id";
+    static final String CHANNEL_ID = "alarm-default-channel-id-3";
 
     // TODO: temporary
     private static final CharSequence CHANNEL_NAME = "Default channel";
@@ -70,7 +73,7 @@ public final class Manager {
      */
     private Manager(Context context) {
         this.context = context;
-        createDefaultChannel();
+//        createDefaultChannel();
     }
 
     /**
@@ -104,25 +107,27 @@ public final class Manager {
         return toast;
     }
 
-    /**
-     * TODO: temporary
-     */
-    @SuppressLint("WrongConstant")
-    private void createDefaultChannel() {
+    public void createDefaultChannel(Uri sound,String channelId){
         NotificationManager mgr = getNotMgr();
-
+        Log.e("localNotification","creteDefaultChannel,sound.path=" + sound.getPath() + ",channelId=" + channelId);
         if (SDK_INT < O)
             return;
 
-        NotificationChannel channel = mgr.getNotificationChannel(CHANNEL_ID);
-
-        if (channel != null)
+        NotificationChannel channel = mgr.getNotificationChannel(channelId);
+        if (channel != null) {
+            channel.setSound(sound, channel.getAudioAttributes());
             return;
+        }
 
         channel = new NotificationChannel(
-                CHANNEL_ID, CHANNEL_NAME, IMPORTANCE_DEFAULT);
+                channelId, CHANNEL_NAME, IMPORTANCE_DEFAULT);
+
+       if( SDK_INT >= 26 ){
+        channel.setSound(sound,channel.getAudioAttributes());
+        }
 
         mgr.createNotificationChannel(channel);
+
     }
 
     /**
@@ -417,5 +422,3 @@ public final class Manager {
     }
 
 }
-
-// codebeat:enable[TOO_MANY_FUNCTIONS]

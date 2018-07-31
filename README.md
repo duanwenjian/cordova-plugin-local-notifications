@@ -1,7 +1,11 @@
 # 此版本针对Android 8.0(sdk 26)版本中自定义sound失效问题修复
 ## 功能其余与原插件保持一致，向原插件开发者致谢！！！
 ### 使用方式
-    $ cordova plugin add https://github.com/duanwenjian/cordova-plugin-local-notifications.git
+1. 安装
+
+        $ cordova plugin add https://github.com/duanwenjian/cordova-plugin-local-notifications.git
+
+2. 参考以下方式使用
 
 # 以下为插件使用方式
 
